@@ -30,10 +30,11 @@ ROLE_PERMISSIONS = {
 class TrialService:
     """在单个 SQLite 连接上提供全部业务操作。"""
 
-    def __init__(self, connection: sqlite3.Connection, clock=None) -> None:
+    def __init__(self, connection: sqlite3.Connection, clock=None, *, initialize_schema: bool = True) -> None:
         self.connection = connection
         self.clock = clock or SystemClock()
-        initialize(connection)
+        if initialize_schema:
+            initialize(connection)
 
     def _now(self) -> str:
         return isoformat(self.clock.now())

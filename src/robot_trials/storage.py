@@ -166,14 +166,41 @@ REQUIRED_TABLES = frozenset({
 })
 
 
-def connect(path: str | Path) -> sqlite3.Connection:
+def connect(path: str | Path, *, connection_factory: type[sqlite3.Connection] = sqlite3.Connection) -> sqlite3.Connection:
     """打开连接并启用严格的事务与外键设置。"""
 
-    connection = sqlite3.connect(str(path), isolation_level=None)
+    connection = sqlite3.connect(str(path), isolation_level=None, factory=connection_factory)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
     connection.execute("PRAGMA busy_timeout = 5000")
     return connection
+
+
+class Database:
+    """文件数据库句柄：启动时初始化一次，按请求提供独立连接。
+
+    SQLite 连接具有线程亲和性，不能跨请求线程共享。服务启动线程只在
+    :meth:`initialize` 期间持有一个短连接；每个请求通过 :meth:`connection`
+    在自己的线程中取得新连接，并在退出上下文时可靠关闭。
+    """
+
+    def __init__(self, path: str | Path, *, connection_factory=connect) -> None:
+        self.path = Path(path)
+        self._connection_factory = connection_factory
+
+    def initialize(self) -> None:
+        """在独立的启动连接上初始化模式，完成后立即释放。"""
+
+        with self.connection() as connection:
+            initialize(connection)
+
+    @contextlib.contextmanager
+    def connection(self) -> Iterator[sqlite3.Connection]:
+        connection = self._connection_factory(self.path)
+        try:
+            yield connection
+        finally:
+            connection.close()
 
 
 @contextlib.contextmanager

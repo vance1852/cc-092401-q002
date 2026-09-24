@@ -36,7 +36,7 @@ python3 -m pip install --no-index --no-deps .
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-测试使用临时目录和内存数据库，不访问网络，也不依赖常驻服务。
+测试使用临时目录和内存数据库，不依赖外部服务。`tests/test_concurrency.py` 会在本机回环地址上真正起停 HTTP 服务，通过真实 socket 并发执行读写，验证每请求独立连接、事务隔离、关闭排空与命令行启停。
 
 ## 构建检查
 
